@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  audio-model:
+    build: .
+    container_name: audio-model
+    ports:
+      - "7500:7500"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./temp:/app/temp # Optional: Mount local temp directory to inspect saved files
+    restart: unless-stopped
