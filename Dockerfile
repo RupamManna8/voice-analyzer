@@ -24,9 +24,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Download the spaCy English model
-RUN python -m spacy download en_core_web_sm
-
 # Pre-download the Whisper base model to bake it into the image (so it doesn't download on first run)
 RUN python -c "from faster_whisper import WhisperModel; WhisperModel('base', compute_type='int8')"
 
@@ -37,4 +34,4 @@ COPY . .
 EXPOSE 7500
 
 # Command to run the application
-CMD ["uvicorn", "voice_analyzer:app", "--host", "0.0.0.0", "--port", "7500"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7500"]

@@ -9,5 +9,5 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./temp:/app/temp # Optional: Mount local temp directory to inspect saved files
+      - ./app/temp:/app/app/temp # Optional: Mount local temp directory to inspect saved files
     restart: unless-stopped
