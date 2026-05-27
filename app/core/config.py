@@ -7,6 +7,28 @@ import os
 from pydantic import BaseModel, Field
 
 
+def _load_dotenv() -> None:
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    if env_path.exists():
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, val = line.split("=", 1)
+                    key = key.strip()
+                    val = val.strip()
+                    if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+                        val = val[1:-1]
+                    if key and key not in os.environ:
+                        os.environ[key] = val
+        except Exception:
+            pass
+
+_load_dotenv()
+
+
 def _split_csv(value: str | None, default: list[str]) -> list[str]:
     if not value:
         return default
@@ -32,6 +54,7 @@ class Settings(BaseModel):
     whisper_compute_type: str = "int8"
     default_language: str = "en"
     sentiment_model_name: str = "distilbert-base-uncased-finetuned-sst-2-english"
+    disable_transformers: bool = False
     ideal_words_per_minute: int = 130
     filler_threshold: int = 5
     long_pause_threshold_sec: float = 1.5
@@ -66,6 +89,7 @@ def get_settings() -> Settings:
             "SENTIMENT_MODEL_NAME",
             "distilbert-base-uncased-finetuned-sst-2-english",
         ),
+        disable_transformers=os.getenv("DISABLE_TRANSFORMERS", "false").strip().lower() in {"1", "true", "yes", "on"},
         ideal_words_per_minute=int(os.getenv("IDEAL_WORDS_PER_MINUTE", "130")),
         filler_threshold=int(os.getenv("FILLER_THRESHOLD", "5")),
         long_pause_threshold_sec=float(os.getenv("LONG_PAUSE_THRESHOLD_SEC", "1.5")),

@@ -52,7 +52,10 @@ class InsightsService:
         if communication_analysis.confidence_score >= 0.75:
             _append_unique(strengths, _phrase(normalized_language, "confident_delivery"))
 
-        if sentiment.overall_sentiment == "positive" and sentiment.sentiment_score >= 0.6:
+        is_positive = sentiment.overall_sentiment.lower() in {"positive", "joy", "love"}
+        is_negative = sentiment.overall_sentiment.lower() in {"negative", "sadness", "anger", "fear"}
+
+        if is_positive and sentiment.sentiment_score >= 0.6:
             _append_unique(strengths, _phrase(normalized_language, "positive_tone"))
 
         if speech_metrics.filler_words.total > settings.filler_threshold:
@@ -79,7 +82,7 @@ class InsightsService:
             _append_unique(issues_detected, _phrase(normalized_language, "confidence_weak"))
             _append_unique(recommendations, _phrase(normalized_language, "increase_projection"))
 
-        if sentiment.overall_sentiment == "negative":
+        if is_negative:
             _append_unique(issues_detected, _phrase(normalized_language, "negative_tone"))
             _append_unique(recommendations, _phrase(normalized_language, "clearer_positive_language"))
 

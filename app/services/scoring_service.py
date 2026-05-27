@@ -109,27 +109,33 @@ class ScoringService:
     ) -> CommunicationAnalysisResult:
         settings = get_settings()
         filler_ratio = speech_metrics.filler_words.total / max(1, speech_metrics.total_words)
-        pause_ratio = speech_metrics.pause_analysis.total_pauses / max(1, speech_metrics.total_words / 25)
+        pause_ratio = speech_metrics.pause_analysis.total_pauses / max(1, speech_metrics.total_words / 8.0)
         long_pause_penalty = speech_metrics.pause_analysis.long_pauses / max(1, speech_metrics.pause_analysis.total_pauses)
 
+        # Articulation quality (flatness) and environment clarity
         clarity_score = _clamp(
-            0.5 * (1.0 - min(1.0, filler_ratio * 3.0))
-            + 0.25 * (1.0 - min(1.0, pause_ratio))
+            0.40 * (1.0 - min(1.0, filler_ratio * 3.0))
+            + 0.20 * (1.0 - min(1.0, pause_ratio))
             + 0.15 * voice_metrics.volume_stability
-            + 0.10 * (1.0 - voice_metrics.noise_score),
+            + 0.15 * (1.0 - voice_metrics.noise_score)
+            + 0.10 * (1.0 - voice_metrics.spectral_flatness),
         )
 
+        # Tempo pacing and conversational continuity
         fluency_score = _clamp(
-            0.55 * (1.0 - min(1.0, filler_ratio * 4.0))
-            + 0.25 * (1.0 - min(1.0, pause_ratio))
-            + 0.20 * (1.0 - min(1.0, long_pause_penalty)),
+            0.45 * (1.0 - min(1.0, filler_ratio * 4.0))
+            + 0.20 * (1.0 - min(1.0, pause_ratio))
+            + 0.15 * (1.0 - min(1.0, long_pause_penalty))
+            + 0.20 * voice_metrics.speaking_tempo,
         )
 
+        # Vocal Fold Steadiness (HNR), relative pitch variation, and loudness stability
         confidence_score = _clamp(
-            0.30 * voice_metrics.energy * 10.0
+            0.20 * min(1.0, voice_metrics.energy * 15.0)
             + 0.25 * voice_metrics.volume_stability
-            + 0.25 * (1.0 - voice_metrics.noise_score)
-            + 0.20 * min(1.0, abs(voice_metrics.pitch_variation) / 150.0),
+            + 0.20 * (1.0 - voice_metrics.noise_score)
+            + 0.20 * (1.0 - min(1.0, voice_metrics.relative_pitch_variation))
+            + 0.15 * min(1.0, voice_metrics.harmonicity / 25.0),
         )
 
         pace_delta = abs(speech_metrics.words_per_minute - settings.ideal_words_per_minute)

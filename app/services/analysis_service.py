@@ -23,13 +23,23 @@ from app.schemas.response_schema import (
     TranscriptResponse,
     TranscriptSegment,
     VoiceMetricsResponse,
+    VocalEmotionResponse,
 )
 from app.services.audio_feature_service import AudioFeatureResult, AudioFeatureService
 from app.services.insights_service import InsightsService
 from app.services.scoring_service import ScoringService, SpeechMetricsResult
-from app.services.sentiment_service import SentimentService
+from app.services.sentiment_service import SentimentResult, SentimentService
 from app.services.transcription_service import TranscriptionResult, TranscriptionService
-from app.utils.file_utils import build_temp_audio_path, safe_remove_file, save_upload_file, validate_audio_upload
+from app.services.emotion_service import EmotionService
+from app.utils.file_utils import (
+    build_temp_audio_path,
+    safe_remove_file,
+    save_upload_file,
+    validate_audio_upload,
+    get_file_extension,
+    convert_audio_to_wav,
+)
+from app.core.constants import ALLOWED_AUDIO_EXTENSIONS
 
 
 class AnalysisService:
@@ -40,6 +50,7 @@ class AnalysisService:
         self._sentiment_service = SentimentService()
         self._scoring_service = ScoringService()
         self._insights_service = InsightsService()
+        self._emotion_service = EmotionService()
 
     async def analyze(self, upload_file: UploadFile, request_data: AnalyzeAudioRequest | None = None) -> AnalysisResponse:
         validate_audio_upload(upload_file)
@@ -51,10 +62,25 @@ class AnalysisService:
 
         await save_upload_file(upload_file, temp_file_path, max_size_bytes=self._settings.max_upload_size_bytes)
 
+        processed_path = temp_file_path
+        converted_path = None
+
+        # If the original filename extension isn't one of the allowed types,
+        # attempt to convert the saved file to WAV using ffmpeg.
+        extension = get_file_extension(upload_file.filename)
+        if extension not in ALLOWED_AUDIO_EXTENSIONS:
+            try:
+                converted_path = temp_file_path.parent / (temp_file_path.stem + '_conv.wav')
+                convert_audio_to_wav(temp_file_path, converted_path)
+                processed_path = converted_path
+            except Exception:
+                # Let the centralized handler convert exceptions to API responses
+                raise
+
         try:
             analysis_response = await run_in_threadpool(
                 self._analyze_sync,
-                temp_file_path,
+                processed_path,
                 original_filename,
                 request_id,
                 language_override,
@@ -66,7 +92,10 @@ class AnalysisService:
         except Exception as exc:  # pragma: no cover - centralized handler converts to API response
             raise ProcessingError(str(exc)) from exc
         finally:
+            # Clean up both the original saved file and any converted file
             safe_remove_file(temp_file_path)
+            if converted_path is not None:
+                safe_remove_file(converted_path)
 
     def _analyze_sync(
         self,
@@ -97,6 +126,11 @@ class AnalysisService:
             communication_analysis=communication_analysis,
             sentiment=sentiment,
             language=speech_language,
+        )
+        vocal_emotion = self._emotion_service.analyze_vocal_emotion(
+            file_path=file_path,
+            voice_metrics=audio_features,
+            sentiment=sentiment,
         )
 
         return AnalysisResponse(
@@ -135,6 +169,12 @@ class AnalysisService:
                 pitch_variation=round(audio_features.pitch_variation, 2),
                 volume_stability=round(audio_features.volume_stability, 2),
                 noise_score=round(audio_features.noise_score, 2),
+                jitter=round(audio_features.jitter, 4),
+                shimmer=round(audio_features.shimmer, 4),
+                spectral_centroid=round(audio_features.spectral_centroid, 2),
+                intensity=round(audio_features.intensity, 2),
+                harmonicity=round(audio_features.harmonicity, 2),
+                spectral_flatness=round(audio_features.spectral_flatness, 4),
             ),
             sentiment_analysis=SentimentAnalysisResponse(
                 overall_sentiment=sentiment.overall_sentiment,
@@ -152,6 +192,7 @@ class AnalysisService:
                 issues_detected=behavioral_insights.issues_detected,
                 recommendations=behavioral_insights.recommendations,
             ),
+            vocal_emotion=vocal_emotion,
         )
 
 

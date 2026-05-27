@@ -4,12 +4,16 @@ import logging
 import time
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from pathlib import Path
+
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 
 from app.api.routes.analyze import compat_router as analyze_compat_router
 from app.api.routes.analyze import router as analyze_router
+from app.api.routes.communication import router as communication_router
+from app.api.routes.emotion import router as emotion_router
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 
@@ -35,15 +39,61 @@ def create_app() -> FastAPI:
     )
     app.state.settings = settings
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.allowed_origins,
-        allow_credentials=settings.cors_allow_credentials,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # Dynamic CORS configuration to prevent Starlette runtime error with wildcard origins + allow_credentials
+    allowed_origins = list(settings.allowed_origins)
+    if settings.cors_allow_credentials and "*" in allowed_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origin_regex=".*",
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    else:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=allowed_origins,
+            allow_credentials=settings.cors_allow_credentials,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     register_exception_handlers(app)
+
+    @app.on_event("startup")
+    def preload_models():
+        # Pre-warm ML models during application startup so that user requests are blazingly fast!
+        import logging
+        logger = logging.getLogger("app.main")
+        logger.info("==================================================")
+        logger.info("Pre-warming ML models during application startup...")
+        
+        try:
+            from app.services.transcription_service import get_whisper_model
+            logger.info("Loading Whisper neural model into memory...")
+            get_whisper_model()
+            logger.info("Whisper neural model loaded successfully!")
+        except Exception as e:
+            logger.error(f"Failed to pre-warm Whisper model: {e}")
+            
+        try:
+            from app.services.sentiment_service import _get_sentiment_pipeline
+            logger.info("Loading Sentiment Transformer model into memory...")
+            _get_sentiment_pipeline()
+            logger.info("Sentiment Transformer model loaded successfully!")
+        except Exception as e:
+            logger.error(f"Failed to pre-warm Sentiment model: {e}")
+
+        try:
+            from app.services.emotion_service import get_ser_pipeline
+            logger.info("Loading Wav2Vec2 SER model into memory...")
+            get_ser_pipeline()
+            logger.info("Wav2Vec2 SER model loaded successfully!")
+        except Exception as e:
+            logger.error(f"Failed to pre-warm Wav2Vec2 SER model: {e}")
+            
+        logger.info("All ML models are fully warmed up and cached in memory!")
+        logger.info("==================================================")
 
     @app.middleware("http")
     async def request_timing_middleware(request: Request, call_next):
@@ -57,8 +107,16 @@ def create_app() -> FastAPI:
         response.headers["X-Process-Time-MS"] = str(processing_time_ms)
         return response
 
-    @app.get("/", summary="Health check")
-    async def health_check() -> JSONResponse:
+    @app.get("/", summary="AudioModel API Test Frontend", response_model=None)
+    async def serve_frontend_or_health() -> HTMLResponse | JSONResponse:
+        frontend_path = Path(__file__).resolve().parent / "static" / "test_frontend.html"
+        if frontend_path.exists():
+            try:
+                html_content = frontend_path.read_text(encoding="utf-8")
+                return HTMLResponse(content=html_content)
+            except Exception as e:
+                logging.getLogger("app.main").warning(f"Failed to read frontend file: {e}")
+        
         return JSONResponse(
             content={
                 "status": "healthy",
@@ -69,6 +127,8 @@ def create_app() -> FastAPI:
 
     app.include_router(analyze_router)
     app.include_router(analyze_compat_router)
+    app.include_router(communication_router)
+    app.include_router(emotion_router)
     return app
 
 

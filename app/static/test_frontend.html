@@ -1,0 +1,1931 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Voice Analyzer — Speech Intelligence Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-main: #09090b;
+        --bg-card: rgba(22, 22, 29, 0.7);
+        --bg-card-hover: rgba(30, 30, 42, 0.85);
+        --border-glass: rgba(255, 255, 255, 0.08);
+        --border-glass-hover: rgba(255, 255, 255, 0.16);
+        --primary: #6366f1;
+        --primary-glow: rgba(99, 102, 241, 0.15);
+        --secondary: #a855f7;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --text-primary: #f8fafc;
+        --text-muted: #94a3b8;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg-main) 70%);
+        background-color: var(--bg-main);
+        color: var(--text-primary);
+        min-height: 100vh;
+        line-height: 1.5;
+        padding: 2rem 1rem;
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 3rem;
+      }
+
+      h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 3rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #a5b4fc 0%, var(--primary) 50%, var(--secondary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.05em;
+        margin-bottom: 0.5rem;
+        display: inline-block;
+      }
+
+      header p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        max-width: 600px;
+        margin: 0 auto;
+        font-weight: 300;
+      }
+
+      /* Card styles */
+      .glass-card {
+        background: var(--bg-card);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--border-glass);
+        border-radius: 16px;
+        padding: 2rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+      }
+
+      .glass-card:hover {
+        border-color: var(--border-glass-hover);
+        box-shadow: 0 10px 40px rgba(99, 102, 241, 0.1);
+      }
+
+      .main-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-bottom: 3rem;
+      }
+
+      @media (min-width: 868px) {
+        .main-grid {
+          grid-template-columns: 1.1fr 0.9fr;
+        }
+      }
+
+      /* Form controls */
+      .form-section-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1.25rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .recording-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: rgba(15, 15, 20, 0.6);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px dashed var(--border-glass);
+        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .mic-button-wrapper {
+        position: relative;
+        margin-bottom: 1rem;
+      }
+
+      .mic-btn {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        outline: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        z-index: 2;
+        position: relative;
+      }
+
+      .mic-btn:hover:not(:disabled) {
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(168, 85, 247, 0.6);
+      }
+
+      .mic-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .mic-btn svg {
+        width: 28px;
+        height: 28px;
+        fill: #fff;
+      }
+
+      .pulse-ring {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: var(--primary);
+        opacity: 0.3;
+        z-index: 1;
+        transform: scale(1);
+        display: none;
+      }
+
+      .recording .pulse-ring {
+        display: block;
+        animation: pulse 1.8s infinite cubic-bezier(0.24, 0, 0.38, 1);
+      }
+
+      @keyframes pulse {
+        0% { transform: scale(0.95); opacity: 0.5; }
+        50% { transform: scale(1.4); opacity: 0.15; }
+        100% { transform: scale(1.8); opacity: 0; }
+      }
+
+      .wave-visualizer {
+        width: 100%;
+        height: 50px;
+        background: transparent;
+        margin-top: 1rem;
+      }
+
+      .timer-display {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        color: var(--text-primary);
+        margin: 0.5rem 0;
+      }
+
+      .rec-status {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-weight: 500;
+      }
+
+      .divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 1.5rem 0;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      .divider::before, .divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid var(--border-glass);
+      }
+
+      .divider:not(:empty)::before { margin-right: 1rem; }
+      .divider:not(:empty)::after { margin-left: 1rem; }
+
+      /* File Input Stylings */
+      .file-drop-area {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        border: 2px dashed var(--border-glass);
+        border-radius: 12px;
+        background: rgba(15, 15, 20, 0.4);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+      }
+
+      .file-drop-area:hover, .file-drop-area.dragover {
+        border-color: var(--primary);
+        background: rgba(99, 102, 241, 0.05);
+      }
+
+      .file-drop-area svg {
+        width: 48px;
+        height: 48px;
+        stroke: var(--text-muted);
+        margin-bottom: 1rem;
+        transition: stroke 0.3s ease;
+      }
+
+      .file-drop-area:hover svg {
+        stroke: var(--primary);
+      }
+
+      .file-drop-area input[type=file] {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .file-name-preview {
+        margin-top: 0.75rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--primary);
+        word-break: break-all;
+        display: none;
+      }
+
+      /* Text Input fields */
+      .input-group {
+        margin-top: 1.5rem;
+      }
+
+      .input-group label {
+        display: block;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+      }
+
+      .input-field {
+        width: 100%;
+        background: rgba(15, 15, 20, 0.8);
+        border: 1px solid var(--border-glass);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        color: var(--text-primary);
+        font-family: inherit;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+      }
+
+      .input-field:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px var(--primary-glow);
+      }
+
+      .submit-btn {
+        width: 100%;
+        margin-top: 2rem;
+        padding: 1rem;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: #fff;
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+      }
+
+      .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 22px rgba(168, 85, 247, 0.4);
+      }
+
+      .submit-btn:active {
+        transform: translateY(0);
+      }
+
+      /* Instructions Panel */
+      .info-panel {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+      }
+
+      .badge-indigo {
+        background: rgba(99, 102, 241, 0.15);
+        color: #a5b4fc;
+        border: 1px solid rgba(99, 102, 241, 0.3);
+      }
+
+      .feature-bullets {
+        list-style: none;
+        margin-top: 1.5rem;
+      }
+
+      .feature-bullets li {
+        margin-bottom: 1rem;
+        padding-left: 1.75rem;
+        position: relative;
+        font-size: 0.95rem;
+        color: var(--text-muted);
+      }
+
+      .feature-bullets li::before {
+        content: "✦";
+        position: absolute;
+        left: 0;
+        color: var(--secondary);
+      }
+
+      /* Tabs control */
+      .tabs-container {
+        margin-top: 3rem;
+        display: none; /* Show only when result is available */
+      }
+
+      .tabs {
+        display: flex;
+        gap: 0.5rem;
+        border-bottom: 1px solid var(--border-glass);
+        margin-bottom: 2rem;
+      }
+
+      .tab {
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-family: 'Outfit', sans-serif;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+      }
+
+      .tab:hover {
+        color: var(--text-primary);
+      }
+
+      .tab.active {
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      .tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: var(--primary);
+        box-shadow: 0 0 10px var(--primary);
+      }
+
+      .tab-panel {
+        display: none;
+      }
+
+      .tab-panel.active {
+        display: block;
+        animation: fadeIn 0.4s ease forwards;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Dashboard visualizations */
+      .dashboard-layout {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+
+      @media (min-width: 900px) {
+        .dashboard-layout {
+          grid-template-columns: 320px 1fr;
+        }
+      }
+
+      .score-summary-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2.5rem 2rem;
+      }
+
+      .gauge-wrapper {
+        position: relative;
+        width: 180px;
+        height: 180px;
+        margin-bottom: 1.5rem;
+      }
+
+      .gauge-svg {
+        transform: rotate(-90deg);
+      }
+
+      .gauge-track {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.05);
+        stroke-width: 12;
+      }
+
+      .gauge-fill {
+        fill: none;
+        stroke: url(#gaugeGradient);
+        stroke-width: 12;
+        stroke-linecap: round;
+        stroke-dasharray: 502;
+        stroke-dashoffset: 502; /* 2 * PI * r = 2 * PI * 80 = 502.6 */
+        transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .gauge-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+      }
+
+      .gauge-val {
+        font-family: 'Outfit', sans-serif;
+        font-size: 3rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1;
+      }
+
+      .gauge-max {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        font-weight: 500;
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .metric-card {
+        background: rgba(30, 30, 42, 0.4);
+        border: 1px solid var(--border-glass);
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .metric-label-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .metric-label {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+      }
+
+      .metric-score {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .progress-bar-container {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 999px;
+        overflow: hidden;
+        margin-top: 0.75rem;
+      }
+
+      .progress-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        width: 0%;
+        transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .sentiment-badge {
+        padding: 0.2rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: capitalize;
+      }
+
+      .sentiment-positive { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+      .sentiment-neutral { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+      .sentiment-negative { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+      /* Detail layout columns */
+      .details-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+
+      @media (min-width: 900px) {
+        .details-grid {
+          grid-template-columns: 1.2fr 0.8fr;
+        }
+      }
+
+      .details-card-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-glass);
+        padding-bottom: 0.75rem;
+        color: var(--text-primary);
+      }
+
+      /* Transcript Display styling */
+      .transcript-viewer {
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+      }
+
+      .transcript-viewer::-webkit-scrollbar {
+        width: 6px;
+      }
+      .transcript-viewer::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .transcript-viewer::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+      }
+
+      .transcript-segment {
+        margin-bottom: 1.25rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 10px;
+        border-left: 3px solid var(--primary);
+      }
+
+      .segment-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+      }
+
+      .segment-text {
+        font-size: 0.95rem;
+        color: #e2e8f0;
+      }
+
+      .filler-word-highlight {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+        padding: 0 0.3rem;
+        border-radius: 4px;
+        font-weight: 500;
+        border-bottom: 1px dashed #fbbf24;
+      }
+
+      /* Voice metrics */
+      .voice-metrics-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .voice-metric-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.95rem;
+      }
+
+      .voice-metric-name {
+        color: var(--text-muted);
+      }
+
+      .voice-metric-value {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+      }
+
+      /* Insights Panel styling */
+      .insights-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .insight-group-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .insight-list {
+        list-style: none;
+      }
+
+      .insight-list li {
+        padding: 0.75rem 1rem 0.75rem 2.25rem;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        position: relative;
+        background: rgba(255, 255, 255, 0.01);
+      }
+
+      .insight-strengths-title { color: var(--success); }
+      .insight-strengths li { border-left: 2px solid var(--success); }
+      .insight-strengths li::before {
+        content: '✓';
+        position: absolute;
+        left: 0.75rem;
+        top: 0.75rem;
+        color: var(--success);
+        font-weight: bold;
+      }
+
+      .insight-issues-title { color: var(--warning); }
+      .insight-issues li { border-left: 2px solid var(--warning); }
+      .insight-issues li::before {
+        content: '⚠';
+        position: absolute;
+        left: 0.75rem;
+        top: 0.75rem;
+        color: var(--warning);
+        font-weight: bold;
+      }
+
+      .insight-recommendations-title { color: var(--primary); }
+      .insight-recommendations li { border-left: 2px solid var(--primary); }
+      .insight-recommendations li::before {
+        content: '💡';
+        position: absolute;
+        left: 0.75rem;
+        top: 0.75rem;
+      }
+
+      /* Raw output pre tag */
+      pre#jsonOutput {
+        background: rgba(15, 15, 20, 0.9);
+        border: 1px solid var(--border-glass);
+        border-radius: 12px;
+        padding: 1.5rem;
+        color: #38bdf8;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.9rem;
+        overflow-x: auto;
+        max-height: 600px;
+      }
+
+      /* Global loader/toast styles */
+      .status-badge-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+      }
+
+      .status-box {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 9999px;
+        background: rgba(30, 30, 42, 0.8);
+        border: 1px solid var(--border-glass);
+        font-weight: 500;
+        font-size: 0.95rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        animation: fadeIn 0.3s ease;
+      }
+
+      .spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255,255,255,0.1);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes spin-reverse {
+        to { transform: rotate(-360deg); }
+      }
+
+      .audio-playback {
+        width: 100%;
+        margin-top: 1rem;
+        height: 40px;
+        border-radius: 8px;
+        outline: none;
+      }
+
+      .audio-playback::-webkit-media-controls-panel {
+        background-color: rgba(30, 30, 42, 0.9);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Voice Analyzer</h1>
+        <p>Advanced Speech Intelligence platform that extracts vocal features, transcribes conversations, and offers behavioral feedback.</p>
+      </header>
+
+      <div class="main-grid">
+        <!-- Input Panel -->
+        <div class="glass-card">
+          <h2 class="form-section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--primary)"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            Speech Audio Input
+          </h2>
+
+          <form id="analyzeForm">
+            <!-- Record Panel -->
+            <div class="recording-container" id="recContainer">
+              <div class="mic-button-wrapper">
+                <button type="button" id="startRec" class="mic-btn" title="Start Recording">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12,2A3,3 0 0,0 9,5V12A3,3 0 0,0 12,15A3,3 0 0,0 15,12V5A3,3 0 0,0 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" />
+                  </svg>
+                </button>
+                <div class="pulse-ring"></div>
+              </div>
+              <span class="rec-status" id="recStatus">Click microphone to record</span>
+              <span class="timer-display" id="recTimer">00:00</span>
+              
+              <canvas class="wave-visualizer" id="waveVisualizer"></canvas>
+
+              <audio id="recordingPlayback" class="audio-playback" controls style="display:none;"></audio>
+            </div>
+
+            <div class="divider">Or Upload Audio File</div>
+
+            <!-- Upload Area -->
+            <div class="file-drop-area" id="dropArea">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+              <p>Drag & drop audio file here or <span style="color:var(--primary); font-weight: 500;">browse</span></p>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Accepts WAV, MP3, or M4A</p>
+              <input type="file" name="file" id="fileInput" accept="audio/*" />
+              <div class="file-name-preview" id="fileNamePreview">No file chosen</div>
+            </div>
+
+            <!-- Options -->
+            <div class="input-group">
+              <label for="languageInput">Language Override (Optional)</label>
+              <input type="text" name="language" id="languageInput" class="input-field" placeholder="e.g. en, es, fr" />
+            </div>
+
+            <button type="submit" id="analyzeBtn" class="submit-btn">Run Speech Analysis</button>
+          </form>
+        </div>
+
+        <!-- Instructions/Capabilities Card -->
+        <div class="glass-card info-panel">
+          <div>
+            <span class="badge badge-indigo">Platform Capability</span>
+            <h2 style="font-family:'Outfit'; font-size:1.75rem; font-weight:700; margin-bottom:1rem;">Audio Intelligence Model</h2>
+            <p style="color: var(--text-muted); font-weight:300;">This system conducts automated audio signal processing and language parsing to analyze verbal communication quality immediately.</p>
+            
+            <ul class="feature-bullets">
+              <li><strong>Fluency & Pace scoring</strong>: Calculates words-per-minute and checks against conversational standards.</li>
+              <li><strong>Vocal tone features</strong>: Measures pitch variation, signal energy level, volume stability, and environmental noise scores.</li>
+              <li><strong>Linguistic sentiment</strong>: Assesses speech semantics to score positive, neutral, or negative sentiment.</li>
+              <li><strong>Filler words tracker</strong>: Automatically detects and highlights conversational filler tokens.</li>
+              <li><strong>Behavioral insight system</strong>: Summarizes structured strengths, faults, and advice.</li>
+            </ul>
+          </div>
+          
+          <div style="border-top:1px solid var(--border-glass); padding-top:1.5rem; margin-top:2rem; font-size:0.85rem; color:var(--text-muted);">
+            Ensure your microphone permissions are granted for capturing high quality speech. Works best with normal conversational speech lengths.
+          </div>
+        </div>
+      </div>
+
+      <!-- Server Status Loader / Notifications -->
+      <div class="status-badge-container" style="display:none;" id="statusContainer">
+        <div class="status-box" id="statusBox">
+          <div class="spinner"></div>
+          <span id="statusMessage">Analyzing Speech...</span>
+        </div>
+      </div>
+
+      <!-- Full-screen Loading Overlay -->
+      <div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(9, 9, 11, 0.95); backdrop-filter:blur(10px); z-index:9999; align-items:center; justify-content:center; flex-direction:column; animation:fadeIn 0.3s ease;">
+        <div class="glass-card" style="max-width:500px; width:90%; padding:2.5rem 2rem; text-align:center; box-shadow:0 0 50px rgba(99, 102, 241, 0.2); border-color:rgba(99, 102, 241, 0.3);">
+          <div style="position:relative; width:80px; height:80px; margin:0 auto 2rem;">
+            <div style="box-sizing:border-box; display:block; position:absolute; width:80px; height:80px; border:3px solid transparent; border-top-color:var(--primary); border-radius:50%; animation:spin 1.2s cubic-bezier(0.5,0,0.5,1) infinite;"></div>
+            <div style="box-sizing:border-box; display:block; position:absolute; width:80px; height:80px; border:3px solid transparent; border-bottom-color:var(--secondary); border-radius:50%; animation:spin-reverse 1.2s cubic-bezier(0.5,0,0.5,1) infinite;"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:36px; height:36px; color:var(--primary); position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/></svg>
+          </div>
+          
+          <h3 style="font-family:'Outfit'; font-size:1.5rem; margin-bottom:0.75rem; color:#fff;" id="loaderTitle">Analyzing Speech</h3>
+          <p style="color:var(--text-muted); font-size:0.95rem; margin-bottom:1.5rem;" id="loaderText">Uploading your vocal signal to the AI engine...</p>
+          
+          <!-- Status Progress steps -->
+          <div style="text-align:left; background:rgba(0,0,0,0.3); border-radius:10px; padding:1.25rem; border:1px solid var(--border-glass); margin-bottom:1.5rem;">
+            <div id="stepUpload" style="display:flex; align-items:center; gap:0.75rem; font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+              <span class="step-dot" style="width:8px; height:8px; border-radius:50%; background:var(--primary);"></span>
+              <span>Uploading Audio File</span>
+            </div>
+            <div id="stepModels" style="display:flex; align-items:center; gap:0.75rem; font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+              <span class="step-dot" style="width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.1);"></span>
+              <span>Booting AI Models & Downloading Weights (1st boot)</span>
+            </div>
+            <div id="stepTranscribe" style="display:flex; align-items:center; gap:0.75rem; font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+              <span class="step-dot" style="width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.1);"></span>
+              <span>Transcribing Vocal Signal</span>
+            </div>
+            <div id="stepMetrics" style="display:flex; align-items:center; gap:0.75rem; font-size:0.85rem; color:var(--text-muted);">
+              <span class="step-dot" style="width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.1);"></span>
+              <span>Evaluating Communication Quality</span>
+            </div>
+          </div>
+          
+          <div style="background:rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius:8px; padding:1rem; text-align:left; font-size:0.8rem; line-height:1.4; color:#fcd34d;">
+            <strong>💡 First-Time Startup Note:</strong> The backend is downloading Whisper and DistilBERT models (~400MB total) from Hugging Face. This may take 1 to 2 minutes depending on connection speeds. Future runs are near-instant!
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Visualization Tabs -->
+      <div class="tabs-container" id="resultsContainer">
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab(event, 'dashboard')">Analysis Dashboard</button>
+          <button class="tab" onclick="switchTab(event, 'raw')">Raw JSON Response</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div class="tab-panel active" id="dashboardPanel">
+          <div class="dashboard-layout">
+            <!-- Sidebar Gauge -->
+            <div class="glass-card score-summary-card">
+              <h3 style="font-family:'Outfit'; font-size:1.1rem; color:var(--text-muted); font-weight:600; margin-bottom:1.5rem; text-transform:uppercase; letter-spacing:0.05em;">Communication Score</h3>
+              <div class="gauge-wrapper">
+                <svg class="gauge-svg" width="180" height="180" viewBox="0 0 180 180">
+                  <defs>
+                    <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="var(--primary)" />
+                      <stop offset="100%" stop-color="var(--secondary)" />
+                    </linearGradient>
+                  </defs>
+                  <circle class="gauge-track" cx="90" cy="90" r="80" />
+                  <circle class="gauge-fill" id="overallGauge" cx="90" cy="90" r="80" />
+                </svg>
+                <div class="gauge-text">
+                  <div class="gauge-val" id="overallScoreVal">0</div>
+                  <div class="gauge-max">/ 100</div>
+                </div>
+              </div>
+              <p style="font-size:0.9rem; color:var(--text-muted);" id="overallScoreDesc">Record or select audio to compute overall index.</p>
+              
+              <!-- Voice Metrics Subpanel -->
+              <div style="width:100%; border-top:1px solid var(--border-glass); margin-top:1.5rem; padding-top:1.25rem; text-align:left;">
+                <h4 style="font-family:'Outfit'; font-size:0.9rem; color:var(--text-primary); font-weight:600; margin-bottom:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">Acoustic Features</h4>
+                <div class="voice-metrics-list">
+                  <div class="voice-metric-item">
+                    <span class="voice-metric-name">Volume Stability</span>
+                    <span class="voice-metric-value" id="valVolStability">0</span>
+                  </div>
+                  <div class="voice-metric-item">
+                    <span class="voice-metric-name">Pitch Variation</span>
+                    <span class="voice-metric-value" id="valPitchVar">0</span>
+                  </div>
+                  <div class="voice-metric-item">
+                    <span class="voice-metric-name">Energy Level</span>
+                    <span class="voice-metric-value" id="valEnergy">0</span>
+                  </div>
+                  <div class="voice-metric-item">
+                    <span class="voice-metric-name">Background Noise</span>
+                    <span class="voice-metric-value" id="valNoise">0</span>
+                  </div>
+                  <div class="voice-metric-item" style="border-top: 1px dashed rgba(255,255,255,0.05); padding-top: 0.5rem; margin-top: 0.5rem;">
+                    <span class="voice-metric-name">Jitter (Vocal Shake)</span>
+                    <span class="voice-metric-value" id="valJitter">0.00%</span>
+                  </div>
+                  <div class="voice-metric-item">
+                    <span class="voice-metric-name">Shimmer (Amplitude Shift)</span>
+                    <span class="voice-metric-value" id="valShimmer">0.00%</span>
+                  </div>
+                  <div class="voice-metric-item">
+                    <span class="voice-metric-name">Spectral Centroid</span>
+                    <span class="voice-metric-value" id="valCentroid">0 Hz</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Vocal Emotion Analytics Card -->
+            <div class="glass-card" id="emotionCard" style="margin-top: 1.5rem; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.5s ease; border-color: rgba(255, 255, 255, 0.08);">
+              <h3 style="font-family:'Outfit'; font-size:1.1rem; color:var(--text-muted); font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; width:100%; text-align:left;">Vocal Emotion Engine</h3>
+              
+              <div id="emotionBadge" style="font-size: 3rem; margin-bottom: 0.5rem; transition: transform 0.3s ease;">😐</div>
+              <h4 id="emotionLabel" style="font-family:'Outfit'; font-size: 1.4rem; font-weight: 700; color: #fff; text-transform: capitalize; margin-bottom: 0.25rem;">Neutrality</h4>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.25rem;">Confidence: <span id="emotionConf" style="font-weight: 600; color: var(--primary);">0%</span></p>
+              
+              <div style="width: 100%; text-align: left; margin-bottom: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 500; margin-bottom: 0.3rem;">
+                  <span style="color: var(--text-muted);">Emotional Intensity</span>
+                  <span id="emotionIntensityVal" style="color: #fff; font-weight: 600;">0%</span>
+                </div>
+                <div class="progress-bar-container" style="margin-top:0; height: 5px;">
+                  <div class="progress-bar-fill" id="barEmotionIntensity" style="width: 0%; background: linear-gradient(90deg, var(--primary), var(--secondary));"></div>
+                </div>
+              </div>
+              
+              <div style="width:100%; border-top:1px solid var(--border-glass); padding-top:1rem; text-align:left; display: flex; flex-direction: column; gap: 0.75rem;">
+                <div class="voice-metric-item">
+                  <span class="voice-metric-name">Autonomic Stress</span>
+                  <span id="vocalStressBadge" class="sentiment-badge sentiment-neutral">Low</span>
+                </div>
+                <div class="voice-metric-item" style="flex-direction: column; align-items: flex-start; gap: 0.2rem;">
+                  <span class="voice-metric-name" style="font-size: 0.75rem;">Speech Rhythm Insight</span>
+                  <span id="vocalRhythmText" style="font-size: 0.8rem; font-weight: 500; color: #e2e8f0; line-height: 1.3;">Steady conversational pacing</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subscores and Dashboard Details -->
+            <div>
+              <div class="metrics-grid">
+                <!-- Fluency Card -->
+                <div class="metric-card">
+                  <div class="metric-label-wrapper">
+                    <span class="metric-label">Fluency</span>
+                    <span class="sentiment-badge" style="background:rgba(99,102,241,0.15); color:var(--primary)" id="fluencyLabel">Calculated</span>
+                  </div>
+                  <div class="metric-score" id="scoreFluency">0<span style="font-size:0.9rem; color:var(--text-muted);">/100</span></div>
+                  <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="barFluency" style="background:var(--primary);"></div>
+                  </div>
+                </div>
+
+                <!-- Clarity Card -->
+                <div class="metric-card">
+                  <div class="metric-label-wrapper">
+                    <span class="metric-label">Clarity</span>
+                    <span class="sentiment-badge" style="background:rgba(168,85,247,0.15); color:var(--secondary)" id="clarityLabel">Calculated</span>
+                  </div>
+                  <div class="metric-score" id="scoreClarity">0<span style="font-size:0.9rem; color:var(--text-muted);">/100</span></div>
+                  <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="barClarity" style="background:var(--secondary);"></div>
+                  </div>
+                </div>
+
+                <!-- Confidence Card -->
+                <div class="metric-card">
+                  <div class="metric-label-wrapper">
+                    <span class="metric-label">Confidence</span>
+                    <span class="sentiment-badge" style="background:rgba(16,185,129,0.15); color:var(--success)" id="confidenceLabel">Calculated</span>
+                  </div>
+                  <div class="metric-score" id="scoreConfidence">0<span style="font-size:0.9rem; color:var(--text-muted);">/100</span></div>
+                  <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="barConfidence" style="background:var(--success);"></div>
+                  </div>
+                </div>
+
+                <!-- Sentiment Card -->
+                <div class="metric-card">
+                  <div class="metric-label-wrapper">
+                    <span class="metric-label">Linguistic Tone</span>
+                    <span class="sentiment-badge sentiment-neutral" id="sentimentToneText">Neutral</span>
+                  </div>
+                  <div class="metric-score" id="scoreSentiment">0<span style="font-size:0.9rem; color:var(--text-muted);">/100</span></div>
+                  <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="barSentiment" style="background:var(--warning);"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Two column details -->
+              <div class="details-grid">
+                <!-- Transcript Column -->
+                <div class="glass-card">
+                  <h3 class="details-card-title">Interactive Segment Transcript</h3>
+                  <div class="transcript-viewer" id="transcriptViewer">
+                    <p style="color:var(--text-muted); text-align:center; padding: 2rem;">No speech processed yet.</p>
+                  </div>
+                  <div style="margin-top:1.5rem; display:flex; gap:1.5rem; font-size:0.85rem; border-top:1px solid var(--border-glass); padding-top:1rem;">
+                    <div>Words Count: <span style="font-weight:600; color:var(--primary);" id="statWordsCount">0</span></div>
+                    <div>Pace: <span style="font-weight:600; color:var(--secondary);" id="statPace">0 WPM</span></div>
+                    <div>Filler Words: <span style="font-weight:600; color:var(--warning);" id="statFillerCount">0</span></div>
+                  </div>
+                  
+                  <!-- Vocal Emotion Trajectory Timeline -->
+                  <div style="margin-top: 1.25rem; border-top: 1px solid var(--border-glass); padding-top: 1rem;">
+                    <h4 style="font-family:'Outfit'; font-size:0.85rem; color:var(--text-primary); font-weight:600; margin-bottom:0.6rem; text-transform:uppercase; letter-spacing:0.05em;">Vocal Emotion Trajectory</h4>
+                    <div id="vocalTrajectoryTimeline" style="display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.5rem; width: 100%;">
+                      <p style="color:var(--text-muted); font-size:0.8rem;">No timeline data available.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Insights Column -->
+                <div class="glass-card">
+                  <h3 class="details-card-title">Behavioral Evaluation</h3>
+                  <div class="insights-panel">
+                    <div>
+                      <div class="insight-group-title insight-strengths-title">Vocal Strengths</div>
+                      <ul class="insight-list insight-strengths" id="insightStrengths">
+                        <li style="color:var(--text-muted);">Awaiting analysis data.</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div class="insight-group-title insight-issues-title">Faults Detected</div>
+                      <ul class="insight-list insight-issues" id="insightIssues">
+                        <li style="color:var(--text-muted);">Awaiting analysis data.</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div class="insight-group-title insight-recommendations-title">Action Advice</div>
+                      <ul class="insight-list insight-recommendations" id="insightRecommendations">
+                        <li style="color:var(--text-muted);">Awaiting analysis data.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Raw JSON Tab -->
+        <div class="tab-panel" id="rawPanel">
+          <pre id="jsonOutput">{}</pre>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById('analyzeForm');
+      const dropArea = document.getElementById('dropArea');
+      const fileInput = document.getElementById('fileInput');
+      const fileNamePreview = document.getElementById('fileNamePreview');
+      
+      const statusContainer = document.getElementById('statusContainer');
+      const statusBox = document.getElementById('statusBox');
+      const statusMessage = document.getElementById('statusMessage');
+      const resultsContainer = document.getElementById('resultsContainer');
+      
+      const startRecBtn = document.getElementById('startRec');
+      const recContainer = document.getElementById('recContainer');
+      const recStatus = document.getElementById('recStatus');
+      const recTimer = document.getElementById('recTimer');
+      const playback = document.getElementById('recordingPlayback');
+      const canvas = document.getElementById('waveVisualizer');
+      const canvasCtx = canvas.getContext('2d');
+
+      // Auto-detect served host or fallback
+      // If served from the backend (port 7500), use the same origin. 
+      // If served from a development server (e.g. Live Server on port 5500), fallback to backend port 7500.
+      const BACKEND_URL = (window.location.port === '7500' || (window.location.protocol.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173'))
+        ? window.location.origin
+        : 'http://localhost:7500';
+
+      // Setup window error listener for robust diagnostics
+      window.addEventListener('error', function (event) {
+        showError('Frontend Script Error', `Message: ${event.message}\nFile: ${event.filename}\nLine: ${event.lineno}`);
+      });
+
+      window.addEventListener('unhandledrejection', function (event) {
+        const reason = event.reason && event.reason.message ? event.reason.message : String(event.reason);
+        showError('Frontend Promise Rejection', reason);
+      });
+
+      // Canvas sizing
+      function resizeCanvas() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      let mediaRecorder = null;
+      let recordedChunks = [];
+      let recordedBlob = null;
+      let recordedBlobWav = null; 
+      let timerInterval = null;
+      let startTime = 0;
+      let audioCtx = null;
+      let analyser = null;
+      let dataArray = null;
+      let bufferLength = 0;
+      let animationFrameId = null;
+
+      // Handle file selection preview
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) {
+          fileNamePreview.textContent = `Selected: ${fileInput.files[0].name} (${(fileInput.files[0].size / 1024 / 1024).toFixed(2)} MB)`;
+          fileNamePreview.style.display = 'block';
+          // Reset recording to avoid confusion
+          clearRecording();
+        } else {
+          fileNamePreview.style.display = 'none';
+        }
+      });
+
+      // Drag and drop events
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropArea.classList.add('dragover');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropArea.classList.remove('dragover');
+        }, false);
+      });
+
+      dropArea.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length) {
+          fileInput.files = files;
+          fileInput.dispatchEvent(new Event('change'));
+        }
+      });
+
+      function clearRecording() {
+        recordedBlob = null;
+        recordedBlobWav = null;
+        playback.style.display = 'none';
+        playback.src = '';
+        recTimer.textContent = '00:00';
+        recStatus.textContent = 'Click microphone to record';
+        recContainer.classList.remove('recording');
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = null;
+        }
+        canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function updateTimer() {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const ss = String(elapsed % 60).padStart(2, '0');
+        recTimer.textContent = `${mm}:${ss}`;
+      }
+
+      // Draw real microphone visualizer
+      function drawWaveform() {
+        if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+        animationFrameId = requestAnimationFrame(drawWaveform);
+        
+        analyser.getByteTimeDomainData(dataArray);
+        
+        canvasCtx.fillStyle = 'rgba(15, 15, 20, 0.4)';
+        canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        canvasCtx.lineWidth = 2;
+        // Gradient color for waveform
+        const gradient = canvasCtx.createLinearGradient(0, 0, canvas.width, 0);
+        gradient.addColorStop(0, '#6366f1');
+        gradient.addColorStop(0.5, '#a855f7');
+        gradient.addColorStop(1, '#6366f1');
+        canvasCtx.strokeStyle = gradient;
+        
+        canvasCtx.beginPath();
+        const sliceWidth = canvas.width * 1.0 / bufferLength;
+        let x = 0;
+        
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = v * canvas.height / 2;
+          
+          if (i === 0) {
+            canvasCtx.moveTo(x, y);
+          } else {
+            canvasCtx.lineTo(x, y);
+          }
+          x += sliceWidth;
+        }
+        
+        canvasCtx.lineTo(canvas.width, canvas.height / 2);
+        canvasCtx.stroke();
+      }
+
+      // Draw a simulated idle waveform
+      function drawIdleWave() {
+        canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+        canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        canvasCtx.lineWidth = 1;
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(0, canvas.height / 2);
+        canvasCtx.lineTo(canvas.width, canvas.height / 2);
+        canvasCtx.stroke();
+      }
+      drawIdleWave();
+
+      // Trigger/Start or Stop recording toggle
+      startRecBtn.addEventListener('click', async () => {
+        // Toggle action
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          // STOP
+          mediaRecorder.stop();
+          if (mediaRecorder.stream && mediaRecorder.stream.getTracks) {
+            mediaRecorder.stream.getTracks().forEach(t => t.stop());
+          }
+          mediaRecorder = null;
+          clearInterval(timerInterval);
+          updateTimer();
+          recStatus.textContent = 'Processing recording...';
+          recContainer.classList.remove('recording');
+          
+          // Stop visualization
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+          }
+          drawIdleWave();
+          
+          if (audioCtx) {
+            audioCtx.close().catch(e => console.warn('Audio context close error', e));
+            audioCtx = null;
+          }
+          return;
+        }
+
+        // START
+        try {
+          recordedChunks = [];
+          recordedBlob = null;
+          recordedBlobWav = null;
+          fileNamePreview.style.display = 'none';
+          fileInput.value = ''; // clear chosen file
+
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          
+          // Setup Analyser Node for waveform drawing
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContextClass();
+          const source = audioCtx.createMediaStreamSource(stream);
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 254;
+          bufferLength = analyser.frequencyBinCount;
+          dataArray = new Uint8Array(bufferLength);
+          source.connect(analyser);
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size) recordedChunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = async () => {
+            const chunkType = (recordedChunks.length > 0 && recordedChunks[0] && recordedChunks[0].type) 
+              ? recordedChunks[0].type 
+              : 'audio/webm';
+            
+            recordedBlob = new Blob(recordedChunks, { type: chunkType });
+            
+            try {
+              recStatus.textContent = 'Converting recording to WAV...';
+              recordedBlobWav = await convertToWav(recordedBlob);
+              const url = URL.createObjectURL(recordedBlobWav);
+              playback.src = url;
+            } catch (err) {
+              console.warn('WAV conversion failed, using original blob', err);
+              const url = URL.createObjectURL(recordedBlob);
+              playback.src = url;
+              recordedBlobWav = null;
+            }
+            
+            playback.style.display = 'block';
+            recStatus.textContent = 'Voice Capture Loaded!';
+          };
+
+          mediaRecorder.start();
+          recContainer.classList.add('recording');
+          recStatus.textContent = 'Recording Vocal Sample...';
+          startTime = Date.now();
+          recTimer.textContent = '00:00';
+          timerInterval = setInterval(updateTimer, 500);
+          
+          // Draw wave animation
+          drawWaveform();
+        } catch (err) {
+          alert('Could not access microphone: ' + err.message);
+          recStatus.textContent = 'Mic access rejected';
+          recContainer.classList.remove('recording');
+        }
+      });
+
+      // WAV audio encoder
+      async function convertToWav(blob) {
+        const arrayBuffer = await blob.arrayBuffer();
+        const AudioCtx = window.AudioContext || window.webkitAudioContext || window.OfflineAudioContext;
+        const tempCtx = new AudioCtx();
+        const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
+        const wavBuffer = audioBufferToWav(audioBuffer);
+        
+        try {
+          if (tempCtx && typeof tempCtx.close === 'function') {
+            tempCtx.close();
+          }
+        } catch (cErr) {
+          console.warn('Audio context close failed', cErr);
+        }
+        return new Blob([wavBuffer], { type: 'audio/wav' });
+      }
+
+      function audioBufferToWav(buffer) {
+        const numChannels = buffer.numberOfChannels;
+        const sampleRate = buffer.sampleRate;
+        const format = 1; // PCM
+        const bitDepth = 16;
+
+        let interleaved;
+        if (numChannels === 2) {
+          interleaved = interleave(buffer.getChannelData(0), buffer.getChannelData(1));
+        } else {
+          interleaved = buffer.getChannelData(0);
+        }
+
+        const bytesPerSample = bitDepth / 8;
+        const blockAlign = numChannels * bytesPerSample;
+        const bufferLength = 44 + interleaved.length * bytesPerSample;
+        const arrayBuffer = new ArrayBuffer(bufferLength);
+        const view = new DataView(arrayBuffer);
+
+        writeString(view, 0, 'RIFF');
+        view.setUint32(4, 36 + interleaved.length * bytesPerSample, true);
+        writeString(view, 8, 'WAVE');
+        writeString(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, format, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * blockAlign, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitDepth, true);
+        writeString(view, 36, 'data');
+        view.setUint32(40, interleaved.length * bytesPerSample, true);
+
+        floatTo16BitPCM(view, 44, interleaved);
+        return arrayBuffer;
+      }
+
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+
+      function interleave(inputL, inputR) {
+        const length = inputL.length + inputR.length;
+        const result = new Float32Array(length);
+        let index = 0;
+        let inputIndex = 0;
+        while (index < length) {
+          result[index++] = inputL[inputIndex];
+          result[index++] = inputR[inputIndex];
+          inputIndex++;
+        }
+        return result;
+      }
+
+      function floatTo16BitPCM(output, offset, input) {
+        for (let i = 0; i < input.length; i++, offset += 2) {
+          let s = Math.max(-1, Math.min(1, input[i]));
+          output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        }
+      }
+
+      // Switch tabs
+      function switchTab(evt, tabName) {
+        const panels = document.querySelectorAll('.tab-panel');
+        const tabs = document.querySelectorAll('.tab');
+        
+        panels.forEach(p => p.classList.remove('active'));
+        tabs.forEach(t => t.classList.remove('active'));
+        
+        document.getElementById(`${tabName}Panel`).classList.add('active');
+        evt.currentTarget.classList.add('active');
+      }
+
+      // Handle errors display
+      function showError(title, msg) {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        statusContainer.style.display = 'flex';
+        statusBox.style.borderColor = 'var(--danger)';
+        statusBox.style.background = 'rgba(239, 68, 68, 0.1)';
+        statusMessage.innerHTML = `<strong style="color:var(--danger)">${title}</strong>: ${msg}`;
+        const spinner = statusBox.querySelector('.spinner');
+        if (spinner) spinner.style.display = 'none';
+      }
+
+      // Handle status update
+      function updateStatus(message, type = 'info') {
+        statusContainer.style.display = 'flex';
+        const spinner = statusBox.querySelector('.spinner');
+        
+        if (type === 'info') {
+          statusBox.style.borderColor = 'var(--border-glass)';
+          statusBox.style.background = 'rgba(30, 30, 42, 0.8)';
+          if (spinner) spinner.style.display = 'block';
+          statusMessage.textContent = message;
+        } else if (type === 'success') {
+          statusBox.style.borderColor = 'var(--success)';
+          statusBox.style.background = 'rgba(16, 185, 129, 0.1)';
+          if (spinner) spinner.style.display = 'none';
+          statusMessage.innerHTML = `<span style="color:var(--success)">✓</span> ${message}`;
+          setTimeout(() => {
+            statusContainer.style.display = 'none';
+          }, 3000);
+        }
+      }
+
+      function showProgressStep(activeStepId, text) {
+        document.getElementById('loaderText').textContent = text;
+        const steps = ['stepUpload', 'stepModels', 'stepTranscribe', 'stepMetrics'];
+        steps.forEach(stepId => {
+          const stepEl = document.getElementById(stepId);
+          const dot = stepEl.querySelector('.step-dot');
+          if (stepId === activeStepId) {
+            dot.style.background = 'var(--secondary)';
+            dot.style.boxShadow = '0 0 10px var(--secondary)';
+            stepEl.style.color = '#fff';
+            stepEl.style.fontWeight = '500';
+          } else if (steps.indexOf(stepId) < steps.indexOf(activeStepId)) {
+            dot.style.background = 'var(--success)';
+            dot.style.boxShadow = '0 0 10px var(--success)';
+            stepEl.style.color = 'var(--text-muted)';
+            stepEl.style.fontWeight = '400';
+          } else {
+            dot.style.background = 'rgba(255,255,255,0.1)';
+            dot.style.boxShadow = 'none';
+            stepEl.style.color = 'var(--text-muted)';
+            stepEl.style.fontWeight = '400';
+          }
+        });
+      }
+
+      // Main submit logic
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Validation
+        if (!recordedBlob && !fileInput.files.length) {
+          alert('Please select an audio file or click the microphone to record.');
+          return;
+        }
+
+        // Show Full Loading Screen and reset steps
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        showProgressStep('stepUpload', 'Reading and preparing vocal signal files...');
+        
+        resultsContainer.style.display = 'none';
+
+        const fd = new FormData();
+        const language = document.getElementById('languageInput').value.trim();
+
+        if (recordedBlob && !fileInput.files.length) {
+          showProgressStep('stepUpload', 'Encoding microphone capture to high-fidelity WAV format...');
+          if (!recordedBlobWav) {
+            try {
+              recordedBlobWav = await convertToWav(recordedBlob);
+            } catch (err) {
+              console.warn('WAV conversion failed; falling back to original blob', err);
+            }
+          }
+          
+          const wavFile = recordedBlobWav || recordedBlob;
+          const ext = recordedBlobWav ? '.wav' : '.webm';
+          const filename = `recording-${Date.now()}${ext}`;
+          fd.append('file', wavFile, filename);
+        } else {
+          fd.append('file', fileInput.files[0]);
+        }
+
+        if (language) {
+          fd.append('language', language);
+        }
+
+        showProgressStep('stepModels', 'Transmitting payload to backend & verifying ML models. Initializing weights (1st boot download may take 1-2 mins)...');
+
+        // Setup progressive visual updates to let user know exactly what the server is doing in the background
+        let progressTimer1 = setTimeout(() => {
+          showProgressStep('stepTranscribe', 'Transcribing spoken words using faster-whisper neural engine...');
+        }, 8000);
+
+        let progressTimer2 = setTimeout(() => {
+          showProgressStep('stepMetrics', 'Analyzing vocal tone stability, energetic range, and semantic sentiment scores...');
+        }, 22000);
+
+        try {
+          const resp = await fetch(BACKEND_URL + '/api/v1/analyze', {
+            method: 'POST',
+            body: fd
+          });
+
+          // Clear progressive timers
+          clearTimeout(progressTimer1);
+          clearTimeout(progressTimer2);
+
+          const contentType = resp.headers.get('content-type') || '';
+          const responseText = await resp.text();
+
+          if (!resp.ok) {
+            let errorText = responseText;
+            try {
+              const errJson = JSON.parse(responseText);
+              errorText = errJson.error && errJson.error.message ? errJson.error.message : JSON.stringify(errJson);
+            } catch {}
+            showError(`Error ${resp.status}`, errorText || 'Upload validation error');
+            return;
+          }
+
+          // Complete loading screen
+          document.getElementById('loadingOverlay').style.display = 'none';
+          
+          let data = {};
+          try {
+            data = JSON.parse(responseText);
+          } catch (pErr) {
+            showError('Invalid JSON response', 'The server returned a response that is not valid JSON.');
+            return;
+          }
+
+          // Populate raw JSON tab
+          document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
+
+          // Populate visual dashboard
+          renderDashboard(data);
+          
+          // Show dashboard
+          resultsContainer.style.display = 'block';
+          // Smooth scroll to results
+          resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        } catch (err) {
+          clearTimeout(progressTimer1);
+          clearTimeout(progressTimer2);
+          showError('Network Connection Failed', `Unable to reach the server at ${BACKEND_URL}. Check if your backend server is active.`);
+        }
+      });
+
+      // Visual rendering function
+      function renderDashboard(data) {
+        if (!data || data.status !== 'success') return;
+
+        const metrics = data.speech_metrics || {};
+        const commScore = data.communication_analysis || {};
+        const voice = data.voice_metrics || {};
+        const sentiment = data.sentiment_analysis || {};
+        const insights = data.behavioral_insights || {};
+        const transcript = data.transcript || {};
+        const meta = data.metadata || {};
+
+        // 1. Overall Score Circular Gauge
+        const score = Math.round((commScore.communication_score || 0) * 100);
+        document.getElementById('overallScoreVal').textContent = score;
+        
+        // Gauge stroke dashoffset calculation: 2 * PI * r = 2 * PI * 80 = 502.6
+        // Dashoffset range: 502.6 (0%) to 0 (100%)
+        const offset = 502.6 - (502.6 * (score / 100));
+        document.getElementById('overallGauge').style.strokeDashoffset = offset;
+
+        // Custom description
+        let desc = 'Outstanding vocal capabilities detected.';
+        if (score < 40) desc = 'Requires substantial speech refinement and training.';
+        else if (score < 60) desc = 'Moderate communication quality. Needs targeted pacing focus.';
+        else if (score < 80) desc = 'Consistent performance with clean pitch and tone balance.';
+        document.getElementById('overallScoreDesc').textContent = desc;
+
+        // 2. Metrics subscores progress bars
+        const clarity = Math.round((commScore.clarity_score || 0) * 100);
+        document.getElementById('scoreClarity').innerHTML = `${clarity}<span style="font-size:0.9rem; color:var(--text-muted);">/100</span>`;
+        document.getElementById('barClarity').style.width = `${clarity}%`;
+        setScoreBadgeText(document.getElementById('clarityLabel'), clarity);
+
+        const fluency = Math.round((commScore.fluency_score || 0) * 100);
+        document.getElementById('scoreFluency').innerHTML = `${fluency}<span style="font-size:0.9rem; color:var(--text-muted);">/100</span>`;
+        document.getElementById('barFluency').style.width = `${fluency}%`;
+        setScoreBadgeText(document.getElementById('fluencyLabel'), fluency);
+
+        const confidence = Math.round((commScore.confidence_score || 0) * 100);
+        document.getElementById('scoreConfidence').innerHTML = `${confidence}<span style="font-size:0.9rem; color:var(--text-muted);">/100</span>`;
+        document.getElementById('barConfidence').style.width = `${confidence}%`;
+        setScoreBadgeText(document.getElementById('confidenceLabel'), confidence);
+
+        const sentimentScore = Math.round(sentiment.sentiment_score * 100) || 50;
+        document.getElementById('scoreSentiment').innerHTML = `${sentimentScore}<span style="font-size:0.9rem; color:var(--text-muted);">/100</span>`;
+        document.getElementById('barSentiment').style.width = `${sentimentScore}%`;
+
+        // Sentiment badge
+        const sentText = sentiment.overall_sentiment || 'neutral';
+        const sentBadge = document.getElementById('sentimentToneText');
+        sentBadge.textContent = sentText;
+        sentBadge.className = 'sentiment-badge'; // reset
+        if (sentText.toLowerCase() === 'positive') sentBadge.classList.add('sentiment-positive');
+        else if (sentText.toLowerCase() === 'negative') sentBadge.classList.add('sentiment-negative');
+        else sentBadge.classList.add('sentiment-neutral');
+
+        // 3. Acoustic Voice details
+        document.getElementById('valVolStability').textContent = voice.volume_stability || 0;
+        document.getElementById('valPitchVar').textContent = voice.pitch_variation || 0;
+        document.getElementById('valEnergy').textContent = voice.energy || 0;
+        document.getElementById('valNoise').textContent = voice.noise_score || 0;
+        
+        // Advanced acoustic metrics
+        document.getElementById('valJitter').textContent = voice.jitter ? `${(voice.jitter * 100).toFixed(2)}%` : '0.00%';
+        document.getElementById('valShimmer').textContent = voice.shimmer ? `${(voice.shimmer * 100).toFixed(2)}%` : '0.00%';
+        document.getElementById('valCentroid').textContent = voice.spectral_centroid ? `${Math.round(voice.spectral_centroid)} Hz` : '0 Hz';
+
+        // 3b. Vocal Emotion Analytics Card
+        const emotion = data.vocal_emotion || {};
+        const domEmotion = emotion.dominant_emotion || 'neutral';
+        const emotionConf = Math.round((emotion.confidence || 0) * 100);
+        const emotionIntensity = Math.round((emotion.intensity_score || 0) * 100);
+        
+        document.getElementById('emotionLabel').textContent = domEmotion;
+        document.getElementById('emotionConf').textContent = `${emotionConf}%`;
+        document.getElementById('emotionIntensityVal').textContent = `${emotionIntensity}%`;
+        document.getElementById('barEmotionIntensity').style.width = `${emotionIntensity}%`;
+        
+        // Autonomic Stress Badge
+        const stressBadge = document.getElementById('vocalStressBadge');
+        const stressVal = emotion.stress_indicator || 'Low';
+        stressBadge.textContent = stressVal;
+        stressBadge.className = 'sentiment-badge'; // reset
+        if (stressVal === 'High') stressBadge.classList.add('sentiment-negative');
+        else if (stressVal === 'Moderate') stressBadge.classList.add('sentiment-neutral');
+        else stressBadge.classList.add('sentiment-positive');
+
+        document.getElementById('vocalRhythmText').textContent = emotion.rhythm_insight || 'Steady conversational pacing';
+
+        // Emotion Card Dynamic Styling (Custom Glow / Emoji / Shadow)
+        const emotionCard = document.getElementById('emotionCard');
+        const emotionBadge = document.getElementById('emotionBadge');
+        
+        // Reset card styling
+        emotionCard.style.boxShadow = '0 4px 30px rgba(0, 0, 0, 0.4)';
+        emotionCard.style.borderColor = 'var(--border-glass)';
+        
+        let emoji = '😐';
+        let cardColor = 'var(--text-muted)';
+        
+        if (domEmotion === 'anger' || domEmotion === 'frustration') {
+          emoji = '😡';
+          cardColor = '#f87171';
+          emotionCard.style.boxShadow = '0 10px 40px rgba(239, 68, 68, 0.25)';
+          emotionCard.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        } else if (domEmotion === 'excitement' || domEmotion === 'happiness') {
+          emoji = '⚡';
+          cardColor = '#c084fc';
+          emotionCard.style.boxShadow = '0 10px 40px rgba(168, 85, 247, 0.25)';
+          emotionCard.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+        } else if (domEmotion === 'calmness') {
+          emoji = '🧘';
+          cardColor = '#38bdf8';
+          emotionCard.style.boxShadow = '0 10px 40px rgba(14, 165, 233, 0.25)';
+          emotionCard.style.borderColor = 'rgba(14, 165, 233, 0.4)';
+        } else if (domEmotion === 'nervousness' || domEmotion === 'anxiety' || domEmotion === 'stress') {
+          emoji = '😰';
+          cardColor = '#fbbf24';
+          emotionCard.style.boxShadow = '0 10px 40px rgba(245, 158, 11, 0.25)';
+          emotionCard.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        } else if (domEmotion === 'sadness') {
+          emoji = '😢';
+          cardColor = '#94a3b8';
+          emotionCard.style.boxShadow = '0 10px 40px rgba(148, 163, 184, 0.15)';
+          emotionCard.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+        }
+        
+        emotionBadge.textContent = emoji;
+        document.getElementById('emotionLabel').style.color = cardColor;
+        document.getElementById('emotionConf').style.color = cardColor;
+
+        // 3c. Populate Vocal Emotion Trajectory horizontal timeline
+        const timelineEl = document.getElementById('vocalTrajectoryTimeline');
+        timelineEl.innerHTML = ''; // reset
+        
+        const traj = emotion.trajectory || [];
+        if (traj.length === 0) {
+          timelineEl.innerHTML = `<p style="color:var(--text-muted); font-size:0.8rem;">No timeline data available.</p>`;
+        } else {
+          traj.forEach(chunk => {
+            const pill = document.createElement('div');
+            pill.style.padding = '0.35rem 0.75rem';
+            pill.style.borderRadius = '20px';
+            pill.style.fontSize = '0.75rem';
+            pill.style.fontWeight = '600';
+            pill.style.whiteSpace = 'nowrap';
+            pill.style.display = 'flex';
+            pill.style.flexDirection = 'column';
+            pill.style.alignItems = 'center';
+            pill.style.gap = '0.1rem';
+            pill.style.border = '1px solid rgba(255,255,255,0.05)';
+            pill.style.background = 'rgba(255,255,255,0.02)';
+            
+            let pillColor = 'var(--text-muted)';
+            let pillBg = 'rgba(255,255,255,0.02)';
+            let pillBorder = 'rgba(255,255,255,0.05)';
+            
+            const eName = chunk.emotion;
+            if (eName === 'anger') {
+              pillColor = '#f87171'; pillBg = 'rgba(239, 68, 68, 0.1)'; pillBorder = 'rgba(239, 68, 68, 0.2)';
+            } else if (eName === 'excitement') {
+              pillColor = '#c084fc'; pillBg = 'rgba(168, 85, 247, 0.1)'; pillBorder = 'rgba(168, 85, 247, 0.2)';
+            } else if (eName === 'calmness') {
+              pillColor = '#38bdf8'; pillBg = 'rgba(14, 165, 233, 0.1)'; pillBorder = 'rgba(14, 165, 233, 0.2)';
+            } else if (eName === 'nervousness') {
+              pillColor = '#fbbf24'; pillBg = 'rgba(245, 158, 11, 0.1)'; pillBorder = 'rgba(245, 158, 11, 0.2)';
+            } else if (eName === 'sadness') {
+              pillColor = '#94a3b8'; pillBg = 'rgba(148, 163, 184, 0.1)'; pillBorder = 'rgba(148, 163, 184, 0.15)';
+            }
+            
+            pill.style.color = pillColor;
+            pill.style.background = pillBg;
+            pill.style.borderColor = pillBorder;
+            
+            pill.innerHTML = `
+              <span style="text-transform:capitalize;">${eName}</span>
+              <span style="font-size:0.6rem; color:var(--text-muted); font-weight:400;">${chunk.start}s - ${chunk.end}s</span>
+            `;
+            timelineEl.appendChild(pill);
+          });
+        }
+
+        // 4. Statistics Footer
+        document.getElementById('statWordsCount').textContent = metrics.total_words || 0;
+        document.getElementById('statPace').textContent = `${metrics.words_per_minute || 0} WPM`;
+        document.getElementById('statFillerCount').textContent = metrics.filler_words ? (metrics.filler_words.total || 0) : 0;
+
+        // 5. Interactive Transcript highlight filler words
+        const transEl = document.getElementById('transcriptViewer');
+        transEl.innerHTML = ''; // reset
+        
+        const segments = transcript.segments || [];
+        if (segments.length === 0 && transcript.text) {
+          // Fallback if segments is empty
+          const p = document.createElement('p');
+          p.className = 'segment-text';
+          p.innerHTML = highlightFillerWords(transcript.text, metrics.filler_words);
+          transEl.appendChild(p);
+        } else {
+          segments.forEach(seg => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'transcript-segment';
+            
+            const metaDiv = document.createElement('div');
+            metaDiv.className = 'segment-meta';
+            metaDiv.innerHTML = `<span>Segment</span><span>[${seg.start.toFixed(1)}s - ${seg.end.toFixed(1)}s]</span>`;
+            
+            const textDiv = document.createElement('div');
+            textDiv.className = 'segment-text';
+            textDiv.innerHTML = highlightFillerWords(seg.text, metrics.filler_words);
+            
+            wrapper.appendChild(metaDiv);
+            wrapper.appendChild(textDiv);
+            transEl.appendChild(wrapper);
+          });
+        }
+
+        if (transEl.children.length === 0) {
+          transEl.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding: 2rem;">No speech transcript generated.</p>`;
+        }
+
+        // 6. Insights
+        renderInsightList(document.getElementById('insightStrengths'), insights.strengths, 'No positive traits singled out yet.');
+        renderInsightList(document.getElementById('insightIssues'), insights.issues_detected, 'Excellent! No speech issues flaggered.');
+        renderInsightList(document.getElementById('insightRecommendations'), insights.recommendations, 'Keep practicing the natural conversation structure.');
+      }
+
+      function setScoreBadgeText(badgeEl, score) {
+        badgeEl.textContent = score >= 80 ? 'EXCELLENT' : score >= 60 ? 'SOLID' : 'IMPROVE';
+      }
+
+      function renderInsightList(container, list, emptyMsg) {
+        container.innerHTML = '';
+        if (!list || list.length === 0) {
+          const li = document.createElement('li');
+          li.style.color = 'var(--text-muted)';
+          li.textContent = emptyMsg;
+          container.appendChild(li);
+        } else {
+          list.forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            container.appendChild(li);
+          });
+        }
+      }
+
+      function highlightFillerWords(text, fillerWordsDetails) {
+        if (!text) return '';
+        if (!fillerWordsDetails || !fillerWordsDetails.details) {
+          return text;
+        }
+
+        // fillerWordsDetails.details is a dictionary/object, e.g. {"um": 2, "like": 1}
+        const detailWords = Object.keys(fillerWordsDetails.details).map(w => w.toLowerCase());
+        
+        // Add standard filler words just in case
+        const standardFillers = ['um', 'uh', 'like', 'ah', 'er', 'so', 'actually'];
+        const fillers = [...new Set([...detailWords, ...standardFillers])];
+        
+        let words = text.split(/(\s+)/);
+        return words.map(w => {
+          // Remove punctuation for matching
+          const cleanWord = w.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").trim();
+          if (fillers.includes(cleanWord) && cleanWord.length > 0) {
+            // Re-inject punctuation with highlight
+            const startPunct = w.match(/^[^a-zA-Z]*/)[0];
+            const endPunct = w.match(/[^a-zA-Z]*$/)[0];
+            const coreWord = w.substring(startPunct.length, w.length - endPunct.length);
+            return `${startPunct}<span class="filler-word-highlight">${coreWord}</span>${endPunct}`;
+          }
+          return w;
+        }).join('');
+      }
+    </script>
+  </body>
+</html>

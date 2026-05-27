@@ -21,21 +21,18 @@ class SentimentResult:
 
 def _normalize_label(label: str, score: float) -> tuple[str, float]:
     normalized = label.strip().lower()
-    if normalized in {"positive", "pos", "label_1"}:
-        return "positive", float(score)
-    if normalized in {"negative", "neg", "label_0"}:
-        return "negative", float(score)
-    if normalized in {"neutral", "label_2"}:
-        return "neutral", float(score)
     return normalized, float(score)
 
 
 @lru_cache(maxsize=1)
 def _get_sentiment_pipeline() -> object | None:
     settings = get_settings()
+    if settings.disable_transformers:
+        logger.warning("Transformers are disabled by configuration; using deterministic sentiment scoring")
+        return None
     try:
         transformers_module = import_module("transformers")
-    except ImportError:  # pragma: no cover - optional runtime dependency
+    except ImportError:  # pragma: no cover
         logger.warning("Transformers is not installed; using deterministic sentiment scoring")
         return None
 
@@ -45,8 +42,9 @@ def _get_sentiment_pipeline() -> object | None:
         return None
 
     try:
-        return pipeline_factory("sentiment-analysis", model=settings.sentiment_model_name)
-    except Exception as exc:  # pragma: no cover - runtime fallback path
+        # Load multiclass text emotion classifier
+        return pipeline_factory("text-classification", model=settings.sentiment_model_name, device=-1)
+    except Exception as exc:  # pragma: no cover
         logger.warning("Falling back to deterministic sentiment scoring: %s", exc)
         return None
 
@@ -75,9 +73,9 @@ def _fallback_sentiment(text: str, language: str) -> SentimentResult:
     score = max(0.0, min(1.0, 0.5 + polarity / 2.0))
 
     if polarity > 0.1:
-        return SentimentResult(overall_sentiment="positive", sentiment_score=score)
+        return SentimentResult(overall_sentiment="joy", sentiment_score=score)
     if polarity < -0.1:
-        return SentimentResult(overall_sentiment="negative", sentiment_score=1.0 - score)
+        return SentimentResult(overall_sentiment="sadness", sentiment_score=1.0 - score)
     return SentimentResult(overall_sentiment="neutral", sentiment_score=0.5)
 
 
@@ -98,7 +96,12 @@ class SentimentService:
         try:
             result = analyzer(cleaned_text[:4000])[0]
             label, score = _normalize_label(str(result.get("label", "neutral")), float(result.get("score", 0.5)))
+            
+            # Map low-confidence emotions to neutral
+            if score < 0.40:
+                return SentimentResult(overall_sentiment="neutral", sentiment_score=score)
+                
             return SentimentResult(overall_sentiment=label, sentiment_score=max(0.0, min(1.0, score)))
-        except Exception as exc:  # pragma: no cover - runtime fallback path
+        except Exception as exc:  # pragma: no cover
             logger.warning("Transformer sentiment failed, using fallback scoring: %s", exc)
             return _fallback_sentiment(cleaned_text, normalized_language)
