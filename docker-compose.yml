@@ -14,7 +14,7 @@ services:
       WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
       WORKERS: ${WORKERS:-4}
     volumes:
-      - ./app/temp:/app/app/temp # Optional: Mount local temp directory to inspect saved files
+      - ./app/temp:/app/temp # Optional: Mount local temp directory to inspect saved files
       - models:/models
     restart: unless-stopped
     healthcheck:

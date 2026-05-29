@@ -18,6 +18,8 @@ RUN apt-get update && \
     ffmpeg \
     libsndfile1 \
     build-essential \
+    python3-dev \
+    swig \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python dependencies and install (keep image layers cache-friendly)
