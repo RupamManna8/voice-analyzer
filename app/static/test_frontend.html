@@ -852,10 +852,25 @@
               <div class="file-name-preview" id="fileNamePreview">No file chosen</div>
             </div>
 
-            <!-- Options -->
+            <!-- Service Selection -->
             <div class="input-group">
+              <label for="serviceInput">Intelligence Service</label>
+              <select name="service" id="serviceInput" class="input-field" style="background: rgba(15, 15, 20, 0.8);">
+                <option value="analyze">Full Speech Intelligence (Unified /analyze)</option>
+                <option value="communication">Communication Analysis (/communication/analyze)</option>
+                <option value="emotion">Voice Emotion Timeline (/emotion/timeline)</option>
+                <option value="stream">Real-time Emotion Streaming (WS /ws/emotion-stream)</option>
+              </select>
+            </div>
+
+            <!-- Options -->
+            <div id="optionsGroup" class="input-group">
               <label for="languageInput">Language Override (Optional)</label>
               <input type="text" name="language" id="languageInput" class="input-field" placeholder="e.g. en, es, fr" />
+            </div>
+
+            <div id="streamingNotice" style="display:none; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); border-radius:8px; padding:1rem; margin-top:1.5rem; font-size:0.85rem; color:#a5b4fc; line-height:1.4; text-align:left;">
+              <strong>🎙️ Live Streaming Active:</strong> Click the glowing microphone button above to start your live broadcast. The emotion engine will evaluate your vocal fold vibrations, pacing, and stress coordinates in real time!
             </div>
 
             <button type="submit" id="analyzeBtn" class="submit-btn">Run Speech Analysis</button>
@@ -1159,6 +1174,30 @@
       const canvas = document.getElementById('waveVisualizer');
       const canvasCtx = canvas.getContext('2d');
 
+      const serviceInput = document.getElementById('serviceInput');
+      const optionsGroup = document.getElementById('optionsGroup');
+      const streamingNotice = document.getElementById('streamingNotice');
+      const analyzeBtn = document.getElementById('analyzeBtn');
+      const uploadDivider = document.querySelector('.divider');
+
+      serviceInput.addEventListener('change', () => {
+        const val = serviceInput.value;
+        if (val === 'stream') {
+          dropArea.style.display = 'none';
+          uploadDivider.style.display = 'none';
+          optionsGroup.style.display = 'none';
+          streamingNotice.style.display = 'block';
+          analyzeBtn.style.display = 'none';
+          clearRecording();
+        } else {
+          dropArea.style.display = 'flex';
+          uploadDivider.style.display = 'flex';
+          optionsGroup.style.display = 'block';
+          streamingNotice.style.display = 'none';
+          analyzeBtn.style.display = 'block';
+        }
+      });
+
       // Auto-detect served host or fallback
       // If served from the backend (port 7500), use the same origin. 
       // If served from a development server (e.g. Live Server on port 5500), fallback to backend port 7500.
@@ -1304,8 +1343,207 @@
       }
       drawIdleWave();
 
+      let ws = null;
+      let isStreaming = false;
+      let streamCtx = null;
+      let streamSource = null;
+      let streamProcessor = null;
+
+      async function startStreaming() {
+        try {
+          recStatus.textContent = 'Connecting to Voice Emotion Stream...';
+          recContainer.classList.add('recording');
+          startTime = Date.now();
+          recTimer.textContent = '00:00';
+          timerInterval = setInterval(updateTimer, 500);
+
+          // Get WebSocket URL from BACKEND_URL
+          const wsProto = BACKEND_URL.startsWith('https') ? 'wss' : 'ws';
+          const wsUrl = `${wsProto}://${BACKEND_URL.replace(/^https?:\/\//, '')}/ws/emotion-stream`;
+          
+          ws = new WebSocket(wsUrl);
+          
+          ws.onopen = async () => {
+            recStatus.textContent = 'Live Streaming Vocal Emotion...';
+            isStreaming = true;
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // Audio context set to 16000Hz mono so the browser downsamples for us!
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            streamCtx = new AudioContextClass({ sampleRate: 16000 });
+            
+            streamSource = streamCtx.createMediaStreamSource(stream);
+            
+            // Analyser node for waveform drawing
+            analyser = streamCtx.createAnalyser();
+            analyser.fftSize = 256;
+            bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+            streamSource.connect(analyser);
+            
+            // Process buffer chunks
+            streamProcessor = streamCtx.createScriptProcessor(4096, 1, 1);
+            streamProcessor.onaudioprocess = (e) => {
+              if (!isStreaming || ws.readyState !== WebSocket.OPEN) return;
+              
+              const inputData = e.inputBuffer.getChannelData(0);
+              // Convert Float32Array to Int16Array PCM
+              const pcmData = new Int16Array(inputData.length);
+              for (let i = 0; i < inputData.length; i++) {
+                let s = Math.max(-1, Math.min(1, inputData[i]));
+                pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+              }
+              
+              // Send binary PCM bytes
+              ws.send(pcmData.buffer);
+            };
+            
+            streamSource.connect(streamProcessor);
+            streamProcessor.connect(streamCtx.destination);
+            
+            // Start waveform visualizer
+            drawStreamingWaveform();
+          };
+
+          ws.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              // Render dashboard in real time
+              resultsContainer.style.display = 'block';
+              renderDashboard({
+                status: 'success',
+                vocal_emotion: data,
+                // Pass dummy results so other dashboard cards don't throw errors
+                speech_metrics: {
+                  total_words: '-',
+                  words_per_minute: '-',
+                  filler_words: { total: '-' }
+                },
+                communication_analysis: {
+                  communication_score: data.confidence,
+                  clarity_score: data.confidence,
+                  fluency_score: data.confidence,
+                  confidence_score: data.confidence,
+                  pace_score: data.confidence
+                },
+                sentiment_analysis: {
+                  sentiment_score: data.confidence,
+                  overall_sentiment: data.dominant_emotion
+                },
+                behavioral_insights: {
+                  strengths: ['Real-time streaming calibration active'],
+                  issues_detected: ['Steady pacing recommended'],
+                  recommendations: ['Vocal fold vibrations parsed live']
+                },
+                transcript: {
+                  segments: [
+                    { start: 0, end: (Date.now() - startTime)/1000, text: "[Live audio streaming active...]" }
+                  ]
+                }
+              });
+            } catch (err) {
+              console.error("Failed to parse real-time packet", err);
+            }
+          };
+
+          ws.onerror = (err) => {
+            console.error("WebSocket error", err);
+          };
+
+          ws.onclose = () => {
+            stopStreaming();
+          };
+
+        } catch (err) {
+          alert('Could not start live stream: ' + err.message);
+          stopStreaming();
+        }
+      }
+
+      function drawStreamingWaveform() {
+        if (!isStreaming) return;
+        animationFrameId = requestAnimationFrame(drawStreamingWaveform);
+        
+        analyser.getByteTimeDomainData(dataArray);
+        
+        canvasCtx.fillStyle = 'rgba(15, 15, 20, 0.4)';
+        canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        canvasCtx.lineWidth = 2;
+        const gradient = canvasCtx.createLinearGradient(0, 0, canvas.width, 0);
+        gradient.addColorStop(0, '#6366f1');
+        gradient.addColorStop(0.5, '#a855f7');
+        gradient.addColorStop(1, '#6366f1');
+        canvasCtx.strokeStyle = gradient;
+        
+        canvasCtx.beginPath();
+        const sliceWidth = canvas.width * 1.0 / bufferLength;
+        let x = 0;
+        
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = v * canvas.height / 2;
+          
+          if (i === 0) {
+            canvasCtx.moveTo(x, y);
+          } else {
+            canvasCtx.lineTo(x, y);
+          }
+          x += sliceWidth;
+        }
+        
+        canvasCtx.lineTo(canvas.width, canvas.height / 2);
+        canvasCtx.stroke();
+      }
+
+      function stopStreaming() {
+        isStreaming = false;
+        recContainer.classList.remove('recording');
+        recStatus.textContent = 'Click microphone to record';
+        clearInterval(timerInterval);
+        
+        if (ws) {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.close();
+          }
+          ws = null;
+        }
+        
+        if (streamProcessor) {
+          streamProcessor.disconnect();
+          streamProcessor = null;
+        }
+        
+        if (streamSource) {
+          streamSource.disconnect();
+          streamSource = null;
+        }
+        
+        if (streamCtx) {
+          streamCtx.close().catch(e => console.warn('Stream ctx close error', e));
+          streamCtx = null;
+        }
+
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = null;
+        }
+        drawIdleWave();
+      }
+
       // Trigger/Start or Stop recording toggle
       startRecBtn.addEventListener('click', async () => {
+        // Toggle action for real-time streaming
+        if (serviceInput.value === 'stream') {
+          if (isStreaming) {
+            stopStreaming();
+          } else {
+            startStreaming();
+          }
+          return;
+        }
+
         // Toggle action
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           // STOP
@@ -1600,7 +1838,13 @@
         }, 22000);
 
         try {
-          const resp = await fetch(BACKEND_URL + '/api/v1/analyze', {
+          const endpoint = serviceInput.value === 'analyze'
+            ? '/api/v1/analyze'
+            : serviceInput.value === 'communication'
+              ? '/api/v1/communication/analyze'
+              : '/api/v1/emotion/timeline';
+
+          const resp = await fetch(BACKEND_URL + endpoint, {
             method: 'POST',
             body: fd
           });

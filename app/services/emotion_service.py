@@ -85,13 +85,65 @@ class EmotionService:
             nlp_probs["neutral"] = nlp_score * 0.7
             nlp_probs["calmness"] = nlp_score * 0.3
 
+        # Pre-slice and batch Wav2Vec2 SER classifications to avoid sequential model forward passes on CPU
+        batch_ser_probs = []
         ser_pipeline = get_ser_pipeline()
         
+        if ser_pipeline is not None and voice_metrics.active_speech_waveform.size > 0:
+            chunk_waves = []
+            for chunk in voice_metrics.chunks:
+                start_samp = int(chunk.start_sec * 16000)
+                end_samp = int(chunk.end_sec * 16000)
+                chunk_wave = voice_metrics.active_speech_waveform[start_samp:end_samp]
+                if chunk_wave.size > 0:
+                    chunk_waves.append(chunk_wave)
+                else:
+                    # Push minimal dummy array if chunk is empty
+                    chunk_waves.append(np.array([0.0], dtype=np.float32))
+            
+            try:
+                # Limit PyTorch internal CPU thread contention to avoid context switching overhead
+                import torch
+                if torch.get_num_threads() > 4:
+                    torch.set_num_threads(4)
+                
+                # Single-pass batch inference!
+                batch_outputs = ser_pipeline(chunk_waves, batch_size=min(len(chunk_waves), 8))
+                
+                # Normalize outputs for each chunk wave
+                for idx, ser_out in enumerate(batch_outputs):
+                    # Handle single input vs list outputs from HF pipeline
+                    if not isinstance(ser_out, list) and len(chunk_waves) == 1:
+                        ser_out = batch_outputs
+                        
+                    s_probs = {e: 0.0 for e in supported_emotions}
+                    for pred in ser_out:
+                        lbl = pred["label"].lower()
+                        score = float(pred["score"])
+                        if lbl == "ang":
+                            s_probs["anger"] = score * 0.6
+                            s_probs["frustration"] = score * 0.4
+                        elif lbl == "hap":
+                            s_probs["excitement"] = score * 0.5
+                            s_probs["happiness"] = score * 0.5
+                        elif lbl == "sad":
+                            s_probs["sadness"] = score * 0.7
+                            s_probs["fear"] = score * 0.3
+                        elif lbl == "neu":
+                            s_probs["neutral"] = score * 0.6
+                            s_probs["calmness"] = score * 0.4
+                    batch_ser_probs.append(s_probs)
+            except Exception as e:
+                logger.warning("Batch Wav2Vec2 SER execution failed: %s. Falling back to default zeros.", e)
+                batch_ser_probs = [{e: 0.0 for e in supported_emotions} for _ in voice_metrics.chunks]
+        else:
+            batch_ser_probs = [{e: 0.0 for e in supported_emotions} for _ in voice_metrics.chunks]
+
         trajectory: list[dict[str, object]] = []
         chunk_probs_history: list[dict[str, float]] = []
 
         # Consume pre-computed cached temporal chunks directly (Single Source of Truth)
-        for chunk in voice_metrics.chunks:
+        for chunk_idx, chunk in enumerate(voice_metrics.chunks):
             # ----------------------------------------------------
             # A. Handcrafted Prosodic Classification
             # ----------------------------------------------------
@@ -155,34 +207,7 @@ class EmotionService:
             # ----------------------------------------------------
             # B. Deep Learning Wav2Vec2 SER Classification
             # ----------------------------------------------------
-            ser_probs = {e: 0.0 for e in supported_emotions}
-            if ser_pipeline is not None and voice_metrics.active_speech_waveform.size > 0:
-                try:
-                    # Slice raw waveform segment pre-cached in voice_metrics
-                    start_samp = int(chunk.start_sec * 16000)
-                    end_samp = int(chunk.end_sec * 16000)
-                    chunk_wave = voice_metrics.active_speech_waveform[start_samp:end_samp]
-                    
-                    if chunk_wave.size > 0:
-                        ser_out = ser_pipeline(chunk_wave, sampling_rate=16000)
-                        for pred in ser_out:
-                            lbl = pred["label"].lower()
-                            score = float(pred["score"])
-                            
-                            if lbl == "ang":
-                                ser_probs["anger"] = score * 0.6
-                                ser_probs["frustration"] = score * 0.4
-                            elif lbl == "hap":
-                                ser_probs["excitement"] = score * 0.5
-                                ser_probs["happiness"] = score * 0.5
-                            elif lbl == "sad":
-                                ser_probs["sadness"] = score * 0.7
-                                ser_probs["fear"] = score * 0.3
-                            elif lbl == "neu":
-                                ser_probs["neutral"] = score * 0.6
-                                ser_probs["calmness"] = score * 0.4
-                except Exception as e:
-                    logger.warning("Chunk Wav2Vec2 SER evaluation failed: %s", e)
+            ser_probs = batch_ser_probs[chunk_idx]
 
             # ----------------------------------------------------
             # C. Multimodal Fusion & Weak Semantic NLP weighting

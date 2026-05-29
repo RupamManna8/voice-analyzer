@@ -48,10 +48,19 @@ POST `/api/analyze`
 - Request: `multipart/form-data` with `file` (audio file, e.g., WAV/MP3) and optional JSON fields specified in [schemas/request_schema.py](schemas/request_schema.py).
 - Response: JSON described by [schemas/response_schema.py](schemas/response_schema.py).
 
+### HTTP endpoints exposed by the service
+
+- `POST /api/v1/analyze` - unified speech intelligence dashboard.
+- `POST /api/v1/communication/analyze` - communication-focused analysis.
+- `POST /api/v1/emotion/timeline` - emotion timeline analysis.
+- `WS /ws/emotion-stream` - live emotion stream for PCM audio chunks.
+
+The React frontend expects the service to be reachable at `http://localhost:7500` by default. Override that with `VITE_AUDIO_MODEL_URL` in the frontend environment if needed.
+
 ### Example curl
 
 ```bash
-curl -X POST "http://localhost:8000/api/analyze" \
+curl -X POST "http://localhost:7500/api/v1/analyze" \
 	-F "file=@/path/to/answer.wav" \
 	-H "accept: application/json"
 ```

@@ -28,7 +28,7 @@ class CommunicationService:
         self._scoring_service = ScoringService()
         self._insights_service = InsightsService()
 
-    async def analyze(
+    def analyze(
         self,
         file_path: Path,
         language_override: str | None = None,
