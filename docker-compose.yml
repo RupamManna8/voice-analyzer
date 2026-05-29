@@ -7,7 +7,22 @@ services:
     ports:
       - "7500:7500"
     environment:
-      - PYTHONUNBUFFERED=1
+      HOST: 0.0.0.0
+      PORT: 7500
+      PYTHONUNBUFFERED: '1'
+      WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE:-base}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      WORKERS: ${WORKERS:-4}
     volumes:
       - ./app/temp:/app/app/temp # Optional: Mount local temp directory to inspect saved files
+      - models:/models
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:7500/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  models:
+    driver: local

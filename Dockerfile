@@ -1,37 +1,50 @@
 # Use an official Python runtime as a parent image
-FROM python:3.10-slim
+FROM python:3.11.6-slim
 
-# Set environment variables
+# Environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
+    XDG_CACHE_HOME=/models/cache \
+    HF_HOME=/models/hf_cache
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
-# ffmpeg and libsndfile1 are required for librosa and audio processing
+# Install system dependencies needed for audio processing and basic tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
     ffmpeg \
     libsndfile1 \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file into the container
+# Copy Python dependencies and install (keep image layers cache-friendly)
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the Whisper base model to bake it into the image (so it doesn't download on first run)
-RUN python -c "from faster_whisper import WhisperModel; WhisperModel('base', compute_type='int8')"
+# Create a non-root user and model/cache directories with correct ownership
+RUN useradd --create-home --shell /bin/bash app && \
+    mkdir -p /models /app/app/temp && \
+    chown -R app:app /models /app
 
-# Copy the rest of the application code
+# Copy application source
 COPY . .
 
-# Expose the port the app runs on
+# Switch to non-root user for runtime
+USER app
+
+# Expose service port
 EXPOSE 7500
 
-# Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7500"]
+# Healthcheck uses the app root which returns a JSON health payload
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl -f http://127.0.0.1:7500/ || exit 1
+
+# Runtime environment defaults
+ENV HOST=0.0.0.0 PORT=7500 WORKERS=4
+
+# Start the app with configurable workers
+CMD ["sh", "-c", "uvicorn app.main:app --host ${HOST} --port ${PORT} --workers ${WORKERS}"]
