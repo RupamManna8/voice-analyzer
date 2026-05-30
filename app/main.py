@@ -18,6 +18,9 @@ from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 
 
+model = None
+
+
 def _configure_logging(level_name: str) -> None:
     logging.basicConfig(
         level=getattr(logging, level_name, logging.INFO),
@@ -61,7 +64,9 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     @app.on_event("startup")
-    def preload_models():
+    async def startup():
+        global model
+
         # Pre-warm ML models during application startup so that user requests are blazingly fast!
         import logging
         logger = logging.getLogger("app.main")
@@ -69,9 +74,9 @@ def create_app() -> FastAPI:
         logger.info("Pre-warming ML models during application startup...")
         
         try:
-            from app.services.transcription_service import get_whisper_model
+            from app.services.transcription_service import load_model
             logger.info("Loading Whisper neural model into memory...")
-            get_whisper_model()
+            model = load_model()
             logger.info("Whisper neural model loaded successfully!")
         except Exception as e:
             logger.error(f"Failed to pre-warm Whisper model: {e}")

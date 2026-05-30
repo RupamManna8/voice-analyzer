@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 
 from faster_whisper import WhisperModel
@@ -24,14 +23,25 @@ class TranscriptionResult:
     language: str
 
 
-@lru_cache(maxsize=1)
+model: WhisperModel | None = None
+
+
+def load_model() -> WhisperModel:
+    global model
+
+    if model is None:
+        settings = get_settings()
+        model = WhisperModel(
+            settings.whisper_model_size,
+            device="cpu",
+            compute_type=settings.whisper_compute_type,
+        )
+
+    return model
+
+
 def get_whisper_model() -> WhisperModel:
-    settings = get_settings()
-    return WhisperModel(
-        settings.whisper_model_size,
-        device="cpu",
-        compute_type=settings.whisper_compute_type,
-    )
+    return load_model()
 
 
 class TranscriptionService:
