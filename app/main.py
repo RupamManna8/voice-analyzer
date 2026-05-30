@@ -18,9 +18,6 @@ from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 
 
-model = None
-
-
 def _configure_logging(level_name: str) -> None:
     logging.basicConfig(
         level=getattr(logging, level_name, logging.INFO),
@@ -62,43 +59,6 @@ def create_app() -> FastAPI:
         )
 
     register_exception_handlers(app)
-
-    @app.on_event("startup")
-    async def startup():
-        global model
-
-        # Pre-warm ML models during application startup so that user requests are blazingly fast!
-        import logging
-        logger = logging.getLogger("app.main")
-        logger.info("==================================================")
-        logger.info("Pre-warming ML models during application startup...")
-        
-        try:
-            from app.services.transcription_service import load_model
-            logger.info("Loading Whisper neural model into memory...")
-            model = load_model()
-            logger.info("Whisper neural model loaded successfully!")
-        except Exception as e:
-            logger.error(f"Failed to pre-warm Whisper model: {e}")
-            
-        try:
-            from app.services.sentiment_service import _get_sentiment_pipeline
-            logger.info("Loading Sentiment Transformer model into memory...")
-            _get_sentiment_pipeline()
-            logger.info("Sentiment Transformer model loaded successfully!")
-        except Exception as e:
-            logger.error(f"Failed to pre-warm Sentiment model: {e}")
-
-        try:
-            from app.services.emotion_service import get_ser_pipeline
-            logger.info("Loading Wav2Vec2 SER model into memory...")
-            get_ser_pipeline()
-            logger.info("Wav2Vec2 SER model loaded successfully!")
-        except Exception as e:
-            logger.error(f"Failed to pre-warm Wav2Vec2 SER model: {e}")
-            
-        logger.info("All ML models are fully warmed up and cached in memory!")
-        logger.info("==================================================")
 
     @app.middleware("http")
     async def request_timing_middleware(request: Request, call_next):

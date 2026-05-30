@@ -30,11 +30,10 @@ def load_model() -> WhisperModel:
     global model
 
     if model is None:
-        settings = get_settings()
         model = WhisperModel(
-            settings.whisper_model_size,
+            "tiny",
             device="cpu",
-            compute_type=settings.whisper_compute_type,
+            compute_type="int8",
         )
 
     return model

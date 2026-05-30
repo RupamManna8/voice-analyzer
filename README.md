@@ -35,10 +35,10 @@ pip install -r requirements.txt
 3. Run the app (development):
 
 ```powershell
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 10000
 ```
 
-The API will be available at `http://localhost:8000`. Automatic API docs (Swagger UI) live at `http://localhost:8000/docs`.
+The API will be available at `http://localhost:10000`. Automatic API docs (Swagger UI) live at `http://localhost:10000/docs`.
 
 ## API
 
@@ -55,12 +55,12 @@ POST `/api/analyze`
 - `POST /api/v1/emotion/timeline` - emotion timeline analysis.
 - `WS /ws/emotion-stream` - live emotion stream for PCM audio chunks.
 
-The React frontend expects the service to be reachable at `http://localhost:7500` by default. Override that with `VITE_AUDIO_MODEL_URL` in the frontend environment if needed.
+The React frontend expects the service to be reachable at `http://localhost:10000` by default. Override that with `VITE_AUDIO_MODEL_URL` in the frontend environment if needed.
 
 ### Example curl
 
 ```bash
-curl -X POST "http://localhost:7500/api/v1/analyze" \
+curl -X POST "http://localhost:10000/api/v1/analyze" \
 	-F "file=@/path/to/answer.wav" \
 	-H "accept: application/json"
 ```

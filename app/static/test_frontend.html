@@ -1199,11 +1199,11 @@
       });
 
       // Auto-detect served host or fallback
-      // If served from the backend (port 7500), use the same origin. 
-      // If served from a development server (e.g. Live Server on port 5500), fallback to backend port 7500.
-      const BACKEND_URL = (window.location.port === '7500' || (window.location.protocol.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173'))
+      // If served from the backend (port 10000), use the same origin. 
+      // If served from a development server (e.g. Live Server on port 5500), fallback to backend port 10000.
+      const BACKEND_URL = (window.location.port === '10000' || (window.location.protocol.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173'))
         ? window.location.origin
-        : 'http://localhost:7500';
+        : 'http://localhost:10000';
 
       // Setup window error listener for robust diagnostics
       window.addEventListener('error', function (event) {

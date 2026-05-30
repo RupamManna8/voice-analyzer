@@ -42,7 +42,7 @@ class Settings(BaseModel):
     app_version: str = "1.0.0"
     api_v1_prefix: str = "/api/v1"
     host: str = "0.0.0.0"
-    port: int = 7500
+    port: int = 10000
     debug: bool = False
     environment: str = "development"
     log_level: str = "INFO"
@@ -50,7 +50,7 @@ class Settings(BaseModel):
     allowed_origins: list[str] = Field(default_factory=lambda: ["*"])
     cors_allow_credentials: bool = True
     max_upload_size_mb: int = 25
-    whisper_model_size: str = "base"
+    whisper_model_size: str = "tiny"
     whisper_compute_type: str = "int8"
     default_language: str = "en"
     sentiment_model_name: str = "distilbert-base-uncased-finetuned-sst-2-english"
@@ -74,7 +74,7 @@ def get_settings() -> Settings:
         app_version=os.getenv("APP_VERSION", "1.0.0"),
         api_v1_prefix=os.getenv("API_V1_PREFIX", "/api/v1"),
         host=os.getenv("HOST", "0.0.0.0"),
-        port=int(os.getenv("PORT", "7500")),
+        port=int(os.getenv("PORT", "10000")),
         debug=os.getenv("DEBUG", "false").strip().lower() in {"1", "true", "yes", "on"},
         environment=os.getenv("ENVIRONMENT", "development"),
         log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -82,7 +82,7 @@ def get_settings() -> Settings:
         allowed_origins=_split_csv(os.getenv("CORS_ALLOW_ORIGINS"), ["*"]),
         cors_allow_credentials=os.getenv("CORS_ALLOW_CREDENTIALS", "true").strip().lower() in {"1", "true", "yes", "on"},
         max_upload_size_mb=int(os.getenv("MAX_UPLOAD_SIZE_MB", "25")),
-        whisper_model_size=os.getenv("WHISPER_MODEL_SIZE", "base"),
+        whisper_model_size=os.getenv("WHISPER_MODEL_SIZE", "tiny"),
         whisper_compute_type=os.getenv("WHISPER_COMPUTE_TYPE", "int8"),
         default_language=os.getenv("DEFAULT_LANGUAGE", "en"),
         sentiment_model_name=os.getenv(
